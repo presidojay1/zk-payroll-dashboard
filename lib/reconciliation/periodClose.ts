@@ -17,6 +17,10 @@ export interface PeriodCloseInputs {
   reconciliationComplete?: boolean;
   receiptReviewComplete?: boolean;
   auditHandoffComplete?: boolean;
+  /** User who authorized the period lock (for audit trail) */
+  authorizedBy?: string;
+  /** Role of the user who authorized the period lock (for audit trail) */
+  authorizedByRole?: string;
 }
 
 /**

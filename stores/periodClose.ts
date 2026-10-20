@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { buildPeriodCloseChecklist, type PeriodCloseInputs } from "@/lib/reconciliation/periodClose";
+import { usePayrollAuditTrailStore } from "./payrollAuditTrail";
 
 export interface ClosePeriodResult {
   success: boolean;
@@ -14,6 +15,10 @@ export interface ReopenPeriodResult {
 export interface ReopenPeriodInputs {
   payrollRunId: string;
   reason: string;
+  /** User who authorized the period reopen (for audit trail) */
+  authorizedBy?: string;
+  /** Role of the user who authorized the period reopen (for audit trail) */
+  authorizedByRole?: string;
 }
 
 interface PeriodCloseStore {
@@ -39,6 +44,16 @@ export const usePeriodCloseStore = create<PeriodCloseStore>((set, get) => ({
     }
 
     set((state) => ({ closedPayrollRunIds: [...state.closedPayrollRunIds, inputs.payrollRunId] }));
+
+    // Log audit evidence of period lock
+    usePayrollAuditTrailStore.getState().logEvent({
+      payrollRunId: inputs.payrollRunId,
+      action: "period_locked",
+      actor: inputs.authorizedBy || "System",
+      actorRole: inputs.authorizedByRole,
+      details: "Pay period locked after successful reconciliation",
+    });
+
     return { success: true, error: null };
   },
 
@@ -58,6 +73,16 @@ export const usePeriodCloseStore = create<PeriodCloseStore>((set, get) => ({
     set((state) => ({
       closedPayrollRunIds: state.closedPayrollRunIds.filter((id) => id !== inputs.payrollRunId),
     }));
+
+    // Log audit evidence of period reopen
+    usePayrollAuditTrailStore.getState().logEvent({
+      payrollRunId: inputs.payrollRunId,
+      action: "period_reopened",
+      actor: inputs.authorizedBy || "System",
+      actorRole: inputs.authorizedByRole,
+      details: `Period reopened: ${trimmedReason}`,
+    });
+
     return { success: true, error: null };
   },
 }));
